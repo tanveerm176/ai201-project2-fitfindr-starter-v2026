@@ -13,8 +13,7 @@
 > python app.py ask 'vintage graphic tee under $30'
 > ```
 >
-> All three tools are stubs, so that last command will do nothing useful yet.
-> That's the starting position.
+> These commands let you inspect the listings and try the completed FitFindr workflow.
 >
 > **The rest of this file is your submission.** Fill it in as you go.
 
@@ -39,7 +38,7 @@
 
 ## What This Does
 
-<!-- Three or four sentences: what a user asks for, and what they get back. -->
+FitFindr takes a request for secondhand clothing, including an optional size and budget, and searches local resale listings. It ranks keyword matches and filters out items that do not meet the requested size or maximum price. For the best match, it uses the user's wardrobe to suggest outfits and creates a short fit-card caption. If nothing matches, it stops and tells the user whether to change the description, size, or price limit.
 
 ---
 
@@ -113,7 +112,28 @@
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'vintage graphic tee under $30'
+     Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+     Outfit:   **Outfit 1: Y2K Streetwear**
+* **New Item:** Y2K Butterfly Baby Tee
+* **Bottoms:** Baggy straight-leg jeans (`w_001`)
+* **Outerwear:** Black cropped zip hoodie (`w_005`)
+* **Shoes:** Chunky white sneakers (`w_007`)
+* **Bag:** Black crossbody bag (`w_010`)
+* *Why it works:* The fitted crop of the baby tee balances the baggy silhouette of the dark-wash jeans, leaning into authentic early-2000s proportions.
+
+**Outfit 2: Edgy Contrast**
+* **New Item:** Y2K Butterfly Baby Tee
+* **Bottoms:** Wide-leg khaki trousers (`w_002`)
+* **Outerwear:** Vintage black denim jacket (`w_006`)
+* **Shoes:** Black combat boots (`w_008`)
+* **Accessories:** Brown leather belt (`w_009`)
+* *Why it works:* The pink and purple butterfly graphic softens the utilitarian khaki trousers, while the black denim jacket and combat boots add a grounded, grunge edge.
+
+     Fit card: Channel ultimate early-2000s energy with this Y2K Baby Tee — Butterfly Print, featuring a sweet pink and purple graphic and a fitted crop length. Pair it with baggy jeans or utilitarian trousers to nail that authentic nostalgic silhouette. Score this piece for just $18.0 currently live on depop.
+
+0 model calls this session, 2 served from cache
 
 ```
 
@@ -154,24 +174,17 @@ Try 3: Pair these effortless Vintage Levi's 501 Jeans — Medium Wash with clean
 
 ## How I Used AI
 
-<!-- Two specific moments. What you asked, what came back, what you changed.
-
-     "I used Claude to help me code" is not enough.
-
-     "I gave Claude my search_listings spec. It returned None on no match
-     instead of an empty list, so I changed it" is the level we want. -->
-
 **Moment 1**
 
-- _What I asked for:_
-- _What came back:_
-- _What I changed:_
+- _What I asked for:_ I asked GitHub Copilot to implement the three tools from their existing signatures, especially the search filters and the empty-wardrobe behavior.
+- _What came back:_ It proposed keyword-overlap ranking, exact size-token matching, a price ceiling, and separate prompts for wardrobes with and without saved items.
+- _What I changed:_ I checked the size edge cases against the listing data, kept matching case-insensitive, and verified that `M` matches `S/M` while `L` does not match `XL`. I also tested the empty-wardrobe prompt path.
 
 **Moment 2**
 
-- _What I asked for:_
-- _What came back:_
-- _What I changed:_
+- _What I asked for:_ I asked GitHub Copilot to wire `run_agent()` through the session fields and stop before outfit generation when search returns no results.
+- _What came back:_ It added regex parsing for size and price and passed the selected listing through session state to the next tool.
+- _What I changed:_ The first run exposed a missing `re` import. I added it, reran the happy path, and checked that the selected listing ID matched the ID received by `suggest_outfit`; I also verified the no-match message and that `fit_card` stays `None`.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 

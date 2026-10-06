@@ -10,8 +10,8 @@ can't tell which layer is lying to you.
     suggest_outfit(new_item, wardrobe)             → str
     create_fit_card(outfit, new_item)              → str
 
-All three are stubs right now. They run and they do nothing — that's the
-starting position and it's deliberate.
+Search uses the local listings data; the outfit and fit-card tools use the
+model adapter in `generate.py`.
 
 ⚠️ Before you write any of them, fill in the **Tool Inventory** section of your
 README (Milestone 2). Four lines per tool: what it does, each input with its
@@ -20,7 +20,10 @@ That last line is what your loop branches on. "Returns a list" earns nothing —
 the description has to say what is *in* the list.
 """
 
-import config  # noqa: F401 — you'll use this in search_listings
+import json
+import re
+
+import config
 from generate import generate
 from utils.data_loader import load_listings
 
@@ -67,19 +70,42 @@ def search_listings(
     realistic — thrift listings often have no brand. If something you write
     assumes a brand is always there, you will find out in unit 4.
 
-    TODO:
-        1. Load every listing with load_listings().
-        2. Filter by max_price and by size, when each is provided.
-        3. Score what's left by keyword overlap with `description`.
-        4. Drop anything scoring zero.
-        5. Sort by score, highest first, and return the listing dicts —
-           at most config.SEARCH_RESULT_LIMIT of them.
-
     Test it from a terminal before you move on:
         python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
     """
-    # TODO: replace this with your implementation
-    return []
+    keywords = set(re.findall(r"[a-z0-9]+", description.casefold()))
+    requested_sizes = set(re.findall(r"[a-z]+\d*|\d+(?:\.\d+)?", (size or "").casefold()))
+    ranked = []
+
+    for position, listing in enumerate(load_listings()):
+        if max_price is not None and listing["price"] > max_price:
+            continue
+
+        if requested_sizes:
+            listing_sizes = set(
+                re.findall(r"[a-z]+\d*|\d+(?:\.\d+)?", listing["size"].casefold())
+            )
+            if not requested_sizes.issubset(listing_sizes):
+                continue
+
+        searchable = " ".join(
+            [
+                listing.get("title", ""),
+                listing.get("description", ""),
+                listing.get("category", ""),
+                " ".join(listing.get("style_tags", [])),
+            ]
+        )
+        listing_keywords = set(re.findall(r"[a-z0-9]+", searchable.casefold()))
+        score = len(keywords & listing_keywords)
+        if score:
+            ranked.append((score, position, listing))
+
+    ranked.sort(key=lambda result: (-result[0], result[1]))
+    return [
+        listing
+        for _, _, listing in ranked[: config.SEARCH_RESULT_LIMIT]
+    ]
 
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
@@ -102,18 +128,33 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
         raising or returning "". Unit 4 has you trigger the empty wardrobe on
         purpose, so decide now what it should do.
 
-    TODO:
-        1. Check whether wardrobe['items'] is empty.
-        2. If it is, ask the model for general styling ideas for this item.
-        3. If it isn't, format the wardrobe items into the prompt and ask for
-           specific combinations naming pieces the user already owns.
-        4. Return the model's response.
-
     Test it from a terminal before you move on:
         python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
     """
-    # TODO: replace this with your implementation
-    return ""
+    wardrobe_items = wardrobe.get("items") or []
+    item_details = json.dumps(new_item, ensure_ascii=False, indent=2)
+
+    if wardrobe_items:
+        prompt = (
+            f"The user is considering this secondhand item:\n{item_details}\n\n"
+            "Their wardrobe contains these items:\n"
+            f"{json.dumps(wardrobe_items, ensure_ascii=False, indent=2)}\n\n"
+            "Suggest one or two practical outfits using the new item and pieces "
+            "from their wardrobe. Name the owned pieces you use."
+        )
+    else:
+        prompt = (
+            f"The user is considering this secondhand item:\n{item_details}\n\n"
+            "The user has no wardrobe items saved. Give one or two general "
+            "styling ideas for this item using common clothing or accessories. "
+            "Do not claim the user owns any particular pieces."
+        )
+
+    response = generate(
+        prompt,
+        system="Give specific, useful outfit advice. Keep the response concise.",
+    )
+    return response.strip() or "Try styling this piece with simple layers and accessories."
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
@@ -144,13 +185,28 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
         • CACHE_ENABLED — the adapter handed back an answer it already had
         • TEMPERATURE   — at 0.0 the model gives the same words every time
 
-    TODO:
-        1. Guard against an empty or whitespace-only `outfit`.
-        2. Build a prompt with the item details and the outfit.
-        3. Call generate() and return the response.
-
     Test it from a terminal before you move on:
         python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
     """
-    # TODO: replace this with your implementation
-    return ""
+    title = new_item.get("title", "this find")
+    if not outfit.strip():
+        return f"Add an outfit suggestion before creating a fit card for {title}."
+
+    price = new_item.get("price", "an unknown price")
+    platform = new_item.get("platform", "the resale platform")
+    prompt = (
+        "Write a natural social-media fit-card caption in two to four sentences. "
+        "Mention the listing title, its exact price, and its platform once each. "
+        "Make it specific to the item's vibe, not a product listing. Do not "
+        "invent details.\n\n"
+        f"Listing:\n{json.dumps(new_item, ensure_ascii=False, indent=2)}\n\n"
+        f"Outfit suggestion:\n{outfit.strip()}\n\n"
+        f"Required listing title: {title}\n"
+        f"Required price: ${price}\n"
+        f"Required platform: {platform}"
+    )
+    response = generate(
+        prompt,
+        system="Write concise, varied captions grounded only in the supplied details.",
+    )
+    return response.strip() or f"{title} for ${price} from {platform}, styled your way."

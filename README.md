@@ -76,7 +76,7 @@
 - **Returns:** A two-to-four sentence caption that mentions the item, price, and platform once each and describes its vibe.
 - **When it has nothing:** If `outfit` is empty or whitespace, returns a descriptive message instead of raising an error.
 
-**Spec check:** Could someone else build these tools from this inventory without asking me anything? Not quite. The remaining gap is the exact size-matching rule: how should `L` avoid matching `XL` while a requested `M` can match `S/M`?
+**Spec check:** Could someone else build these tools from this inventory without asking me anything? Yes. Size matching uses exact normalized size tokens, so `M` matches `S/M` and `L` does not match `XL`.
 
 ---
 
@@ -120,17 +120,33 @@ $ python app.py ask '...'
 **The three tools, tested one at a time**
 
 ```
-$ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
+$ python -c "from tools import search_listings; print([(x['title'], x['price'], x['size'], x['platform']) for x in search_listings('graphic tee', max_price=30)])"
+[('Y2K Baby Tee — Butterfly Print', 18.0, 'S/M', 'depop'), ('Graphic Tee — 2003 Tour Bootleg Style', 24.0, 'L', 'depop'), ('Mesh Long-Sleeve Top — Black', 15.0, 'S/M', 'depop'), ('Vintage Band Tee — Faded Grey', 19.0, 'L', 'depop'), ('Low-Rise Cargo Pants — Khaki', 27.0, 'W29', 'poshmark'), ('Vintage Graphic Hoodie — Faded Black', 26.0, 'L', 'depop')]
 
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+**Outfit 1: Effortless Streetwear**
+*   **Top:** White ribbed tank top (w_003)
+*   **Outerwear:** Vintage black denim jacket (w_006)
+*   **Shoes:** Chunky white sneakers (w_007)
+*   **Accessories:** Brown leather belt (w_009) + Black crossbody bag (w_010)
+*   *Why it works:* The cropped black jacket balances the straight-leg fit of the vintage 501s, while the white tank and sneakers keep the look fresh and casual.
+
+**Outfit 2: Cozy Casual**
+*   **Top:** Oversized grey crewneck sweatshirt (w_004)
+*   **Shoes:** Black combat boots (w_008)
+*   **Accessories:** Brown leather belt (w_009)
+*   *Why it works:* Pairing the fitted, classic 501s with an oversized crewneck creates a balanced high-low silhouette. Tuck the front of the sweatshirt in to show off the belt.
 
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
+$ python -c "import config; config.CACHE_ENABLED=False; from tools import create_fit_card; from utils.data_loader import load_listings; item=load_listings()[0]; [print(f'Try {i+1}: {create_fit_card(\"jeans and white sneakers\", item)}') for i in range(3)]"
+Try 1: Pair these classic Vintage Levi's 501 Jeans — Medium Wash with clean white sneakers for an effortless streetwear look. Featuring a great medium wash with natural knee fading, they bring instant vintage character to your rotation. Grab this pair now on depop for just $38.0.
+Try 2: Throw on those white sneakers and the Vintage Levi's 501 Jeans — Medium Wash for an effortless, classic look. These broken-in blues bring the ultimate streetwear energy with just the right amount of knee fading. Grab them now on depop for $38.0.
+Try 3: Pair these effortless Vintage Levi's 501 Jeans — Medium Wash with clean white sneakers for an easy, everyday look. They feature a great medium wash with natural light fading at the knees. Grab this classic denim staple for $38.0 on depop before it's gone!
 
 ```
 

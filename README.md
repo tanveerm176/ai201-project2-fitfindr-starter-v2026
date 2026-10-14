@@ -326,13 +326,20 @@ Try 5: count=10, prices=[18.0, 24.0, 19.0, 26.0, 15.0, 22.0, 27.0, 20.0, 30.0, 1
 
 | #   | Criterion | Target | Verdict | How I decided |
 | --- | --------- | ------ | ------- | ------------- |
-| 1   |           |        |         |               |
-| 2   |           |        |         |               |
-| 3   |           |        |         |               |
-| 4   |           |        |         |               |
-| 5   |           |        |         |               |
+| 1   | Matching query completes all three tools | 4 of 5 | MET (5/5) | All five matching runs reached `create_fit_card` and returned a non-empty fit card. |
+| 2   | Impossible query stops before tool 2 | 5 of 5 | MET (5/5) | All five returned zero listings, set the actionable empty-search message, and traced only `search_listings`; no outfit tool ran. |
+| 3   | Selected item ID reaches `suggest_outfit` | 5 of 5 | MET (5/5) | All five traces showed `new_item_id='lst_002'`, matching the selected listing ID. |
+| 4   | Fit card includes title, exact price, platform, and 2-4 sentences | 4 of 5 | MET (5/5) | Each of the five uncached cards included `Y2K Baby Tee — Butterfly Print`, `$18.0`, `depop`, and 2-3 sentences. |
+| 5   | Search results respect the $30 ceiling | 5 of 5 | MET (5/5) | All five searches returned the same 10 listings; every price was at or below $30 (maximum $30.0). |
 
 **Diagnoses**
+
+There were no misses to diagnose. None of the tool, loop-branch, session, or
+model-output steps failed these five measured criteria in this run. The run
+supports the deterministic 5-of-5 targets (#2, #3, and #5) for the tested
+inputs. Criteria 1 and 4 allowed one miss but both achieved 5/5; based on this
+evidence, criterion 4 is the one I would tighten to 5 of 5 on a future run.
+I have not changed its original target after seeing these results.
 
 ---
 

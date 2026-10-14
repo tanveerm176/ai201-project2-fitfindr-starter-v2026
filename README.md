@@ -395,19 +395,41 @@ full. -->
 
 **What I changed:**
 
+In `tools.py::create_fit_card`, I strengthened the prompt to require the
+listing title, dollar price, and platform exactly once each, copied verbatim
+with their spelling and capitalization preserved, in two to four complete
+sentences.
+
 **Which failure it was meant to fix:**
+
+This targets potential misses in criterion 4, where the model's fit-card
+output could omit or alter a required listing fact or produce the wrong
+sentence count. The before-run had no misses, so it is a reliability
+improvement to the prompt contract rather than a fix for an observed failed
+try.
 
 ### Run Log — After
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 | --------- | ------ | ----- | ----- | ----- | ----- | ----- | ------- |
-| 1.        |        |       |       |       |       |       |         |
-| 2.        |        |       |       |       |       |       |         |
-| 3.        |        |       |       |       |       |       |         |
-| 4.        |        |       |       |       |       |       |         |
-| 5.        |        |       |       |       |       |       |         |
+| 1. Matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops before tool 2 | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected item ID reaches `suggest_outfit` | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card includes title, exact price, platform, 2-4 sentences | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Search results respect the $30 ceiling | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+
+Five tries per scenario, with caching off. The full evaluator output,
+including all five real fit cards and each trace, is in
+[`results/run_2026-10-13_2306_after.md`](./results/run_2026-10-13_2306_after.md).
 
 **Did it help, and how do I know:**
+
+All five fit-card tries still met criterion 4 after the prompt change, and
+criteria 1, 2, 3, and 5 remained 5/5. It did not improve the measured score:
+criterion 4 was already 5/5 in the before-run. The prompt now states the exact
+format more clearly, but these runs cannot demonstrate a reliability increase
+from a perfect baseline. The improvement therefore caused no measured
+regression, but its benefit remains unproven.
 
 <!-- If it made things worse, say that. Honestly reported, that earns full
      credit and is more interesting than one that worked. -->

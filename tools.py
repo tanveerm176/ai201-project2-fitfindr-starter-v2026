@@ -195,15 +195,16 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     price = new_item.get("price", "an unknown price")
     platform = new_item.get("platform", "the resale platform")
     prompt = (
-        "Write a natural social-media fit-card caption in two to four sentences. "
-        "Mention the listing title, its exact price, and its platform once each. "
-        "Make it specific to the item's vibe, not a product listing. Do not "
-        "invent details.\n\n"
+        "Write a natural social-media fit-card caption in two to four complete "
+        "sentences. Include the required listing title, dollar price, and "
+        "platform exactly once each, copying their spelling and capitalization "
+        "verbatim. Keep it specific to the item's vibe rather than a product "
+        "listing, and do not invent details.\n\n"
         f"Listing:\n{json.dumps(new_item, ensure_ascii=False, indent=2)}\n\n"
         f"Outfit suggestion:\n{outfit.strip()}\n\n"
-        f"Required listing title: {title}\n"
-        f"Required price: ${price}\n"
-        f"Required platform: {platform}"
+        f"Required listing title (copy exactly): {title}\n"
+        f"Required dollar price (copy exactly): ${price}\n"
+        f"Required platform (copy exactly): {platform}"
     )
     response = generate(
         prompt,

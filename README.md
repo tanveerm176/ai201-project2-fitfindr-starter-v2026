@@ -219,6 +219,12 @@ returns an actionable session error and exits normally.
 - _What came back:_ It added regex parsing for size and price and passed the selected listing through session state to the next tool.
 - _What I changed:_ The first run exposed a missing `re` import. I added it, reran the happy path, and checked that the selected listing ID matched the ID received by `suggest_outfit`; I also verified the no-match message and that `fit_card` stays `None`.
 
+**Moment 3**
+
+- _What I asked for:_ I asked Copilot to move `search_listings` behind the MCP server, add failure-path handling and tracing, then run and diagnose five criteria before and after one improvement.
+- _What came back:_ The agent called the registered MCP tool, the loop caught `ModelUnavailable`, and each tool step recorded its inputs and result. It also updated the fit-card prompt to request the listing facts exactly.
+- _What I changed:_ I checked the registered MCP schema against the README inventory, compared direct and MCP results, and inspected the actual five-try reports before marking the criteria. The before and after scores were both 5/5 across all five criteria, so I reported that the prompt change did not improve the measured score.
+
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
      Don't fill these in during unit 3.
@@ -363,7 +369,7 @@ $ python app.py ask 'vintage graphic tee under $30' --trace
       in:  description='vintage graphic tee', size=None, max_price=30.0
       out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
 [2] suggest_outfit
-      in:  new_item='Y2K Baby Tee — Butterfly Print', wardrobe_items=10
+      in:  new_item_id='lst_002', new_item_title='Y2K Baby Tee — Butterfly Print', wardrobe_items=10
       out: **Outfit 1: Y2K Streetwear** * **New Item:** Y2K Butterfly Baby Tee * **Bottoms:** Baggy straight-leg jeans (`…
 [3] create_fit_card
       in:  outfit='**Outfit 1: Y2K Streetwear**\n* **New Item:** Y2K Butterfly Baby Tee\n* **Bottoms:** Baggy straight-le…
@@ -379,10 +385,12 @@ $ python app.py ask 'unobtainium ceremonial jumpsuit size ZZQX under $0.01' --tr
       out: [] (empty)
 ```
 
-**On the MCP move:** <!-- what changed in your code, and whether anything
-behaved differently afterwards. If the rewire didn't work, say exactly where it
-broke — the error text and the last thing that worked. That earns the point in
-full. -->
+**On the MCP move:** I registered `search_listings` in `mcp_server.py` with
+the same typed inputs as the Tool Inventory, then changed `agent.py::run_agent`
+to call it through `mcp_client.call_tool`. The MCP client listed the expected
+tool and schema, and direct versus MCP calls returned equal Python lists of
+listing dictionaries; the empty result also remained `[]`. The call path
+changed, but no behavior difference was observed in the evaluated queries.
 
 ---
 
@@ -438,9 +446,15 @@ regression, but its benefit remains unproven.
 
 ## What's Still Broken
 
-<!-- For each criterion still missed: what you'd do, and why you stopped where
-     you did. "I ran out of time" is fine if it's true. Pretending nothing is
-     left is not. -->
+No acceptance criteria were missed: all five met their targets in both the
+before and after runs. This is evidence for the specific scenarios tested,
+not a guarantee for every listing, query phrasing, wardrobe, or model response.
+In particular, the fit-card prompt change did not improve the measured score
+because criterion 4 was already 5/5 before the change; more varied listings
+and queries would be needed to test its effect beyond this one repeated item.
+
+**Repository URL to submit (same repository as the previous unit):**
+https://github.com/tanveerm176/ai201-project2-fitfindr-starter-v2026
 
 <!-- ═════════════════════════════════════════════════════════════════════
 

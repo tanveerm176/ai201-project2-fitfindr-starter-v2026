@@ -170,6 +170,39 @@ Try 3: Pair these effortless Vintage Levi's 501 Jeans — Medium Wash with clean
 
 ```
 
+### Failure-path checks
+
+```
+$ python app.py ask 'unobtainium ceremonial jumpsuit size ZZQX under $0.01'
+No listings matched those filters. Try a different description, size, or higher price limit.
+0 model calls this session
+```
+
+The empty-wardrobe check used the CLI with `--empty-wardrobe` and a local
+deterministic model stub, so it did not send a request to the model provider:
+
+```
+$ python app.py ask 'vintage graphic tee under $30' --empty-wardrobe
+(running with an empty wardrobe)
+Found: Y2K Baby Tee — Butterfly Print — $18.0 on depop
+Outfit: Try layering this graphic tee under a denim jacket and pairing it with neutral trousers. Finish with comfortable sneakers and a simple accessory.
+Fit card: Pair the tee with relaxed jeans and sneakers for an easy casual look.
+0 model calls this session
+```
+
+For model-unavailable handling, I used a disposable invalid `GEMINI_API_KEY`
+environment override and disabled cache, leaving `.env` unchanged:
+
+```
+$ python app.py ask 'vintage band tee under $25'
+The model couldn't be reached to generate outfit advice. Check your internet connection and GEMINI_API_KEY, then try again. Details: The model rejected your API key. Check GEMINI_API_KEY in your .env file, or create a fresh key at aistudio.google.com.
+1 model calls this session
+```
+
+Before adding the `ModelUnavailable` handler, this path printed a
+`ModelUnavailable` message and exited with status 1. After the handler it
+returns an actionable session error and exits normally.
+
 ---
 
 ## How I Used AI
@@ -266,13 +299,25 @@ that produced it:
 **Happy path**
 
 ```
-
+$ python app.py ask 'vintage graphic tee under $30' --trace
+[1] search_listings (via MCP)
+      in:  description='vintage graphic tee', size=None, max_price=30.0
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+[2] suggest_outfit
+      in:  new_item='Y2K Baby Tee — Butterfly Print', wardrobe_items=10
+      out: **Outfit 1: Y2K Streetwear** * **New Item:** Y2K Butterfly Baby Tee * **Bottoms:** Baggy straight-leg jeans (`…
+[3] create_fit_card
+      in:  outfit='**Outfit 1: Y2K Streetwear**\n* **New Item:** Y2K Butterfly Baby Tee\n* **Bottoms:** Baggy straight-le…
+      out: Channel ultimate early-2000s energy with this Y2K Baby Tee — Butterfly Print, featuring a sweet pink and purpl…
 ```
 
 **Empty search**
 
 ```
-
+$ python app.py ask 'unobtainium ceremonial jumpsuit size ZZQX under $0.01' --trace
+[1] search_listings (via MCP)
+      in:  description='unobtainium ceremonial jumpsuit', size='ZZQX', max_price=0.01
+      out: [] (empty)
 ```
 
 **On the MCP move:** <!-- what changed in your code, and whether anything

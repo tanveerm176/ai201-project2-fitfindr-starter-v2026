@@ -13,37 +13,6 @@ Build and test your three tools in `tools.py` first. Then come here.
     python agent.py          runs both example paths below
 """
 
-# from mcp_client import call_tool
-
-# # was: results = search_listings(parsed["description"], parsed["size"], parsed["max_price"])
-# results = call_tool("search_listings", {
-#     "description": parsed["description"],
-#     "size": parsed["size"],
-#     "max_price": parsed["max_price"],
-# })
-
-# session["parsed"] = parsed
-# trace.step("parse_query", inputs=query, returned=str(parsed))
-
-# session["search_results"] = results
-# trace.step("search_listings (via MCP)", inputs=str(parsed), returned=results, note=f"{len(results)} match(es)")
-
-# if not results:
-#     session["error"] = _nothing_found_message(parsed)
-#     trace.step("branch", note="search returned []: stopping before suggest_outfit")
-#     return session
-
-# session["selected_item"] = results[0]
-# trace.step("select_item", returned=session["selected_item"])
-
-# # after suggest_outfit(...)
-# trace.step("suggest_outfit", inputs=session["selected_item"],
-#            returned=session["outfit_suggestion"])
-
-# # after create_fit_card(...)
-# trace.step("create_fit_card", inputs=session["selected_item"],
-#            returned=session["fit_card"])
-
 import re
 
 import config
@@ -100,13 +69,8 @@ def run_agent(query: str, wardrobe: dict) -> dict:
      The query is parsed with regular expressions. Tool inputs and outputs pass
      through session fields so each stage is visible and testable.
 
-    IN UNIT 4 you come back and add two things:
-
-      • Trace calls. One per step. `trace.step("search_listings", inputs=...,
-        returned=...)` — see trace.py. Your README needs the output.
-
-      • A handler for ModelUnavailable, so a bad key produces a message rather
-        than a stack trace. The import is already at the top of this file.
+    Each tool call is traced, and model failures are returned as actionable
+    session errors rather than uncaught exceptions.
     """
     session = new_session(query, wardrobe)
     price_match = re.search(
@@ -133,11 +97,21 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     }
 
     trace.check_iterations(1)
+    search_inputs = session["parsed"]
     session["search_results"] = call_tool("search_listings", {
-        "description": session["parsed"]["description"],
-        "size": session["parsed"]["size"],
-        "max_price": session["parsed"]["max_price"],
+        "description": search_inputs["description"],
+        "size": search_inputs["size"],
+        "max_price": search_inputs["max_price"],
     })
+    trace.step(
+        "search_listings (via MCP)",
+        inputs=(
+            f"description={search_inputs['description']!r}, "
+            f"size={search_inputs['size']!r}, "
+            f"max_price={search_inputs['max_price']!r}"
+        ),
+        returned=session["search_results"],
+    )
     if not session["search_results"]:
         session["error"] = (
             "No listings matched those filters. Try a different description, "
@@ -148,13 +122,61 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     session["selected_item"] = session["search_results"][0]
 
     trace.check_iterations(2)
-    session["outfit_suggestion"] = suggest_outfit(
-        session["selected_item"], session["wardrobe"]
+    try:
+        session["outfit_suggestion"] = suggest_outfit(
+            session["selected_item"], session["wardrobe"]
+        )
+    except ModelUnavailable as exc:
+        session["error"] = (
+            "The model couldn't be reached to generate outfit advice. "
+            "Check your internet connection and GEMINI_API_KEY, then try again. "
+            f"Details: {exc}"
+        )
+        trace.step(
+            "suggest_outfit",
+            inputs=(
+                f"new_item={session['selected_item'].get('title')!r}, "
+                f"wardrobe_items={len(session['wardrobe'].get('items') or [])}"
+            ),
+            returned=session["error"],
+        )
+        return session
+    trace.step(
+        "suggest_outfit",
+        inputs=(
+            f"new_item={session['selected_item'].get('title')!r}, "
+            f"wardrobe_items={len(session['wardrobe'].get('items') or [])}"
+        ),
+        returned=session["outfit_suggestion"],
     )
 
     trace.check_iterations(3)
-    session["fit_card"] = create_fit_card(
-        session["outfit_suggestion"], session["selected_item"]
+    try:
+        session["fit_card"] = create_fit_card(
+            session["outfit_suggestion"], session["selected_item"]
+        )
+    except ModelUnavailable as exc:
+        session["error"] = (
+            "The model couldn't be reached to create the fit-card caption. "
+            "Check your internet connection and GEMINI_API_KEY, then try again. "
+            f"Details: {exc}"
+        )
+        trace.step(
+            "create_fit_card",
+            inputs=(
+                f"outfit={session['outfit_suggestion']!r}, "
+                f"new_item={session['selected_item'].get('title')!r}"
+            ),
+            returned=session["error"],
+        )
+        return session
+    trace.step(
+        "create_fit_card",
+        inputs=(
+            f"outfit={session['outfit_suggestion']!r}, "
+            f"new_item={session['selected_item'].get('title')!r}"
+        ),
+        returned=session["fit_card"],
     )
     return session
 

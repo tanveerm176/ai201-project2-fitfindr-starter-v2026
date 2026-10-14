@@ -13,11 +13,43 @@ Build and test your three tools in `tools.py` first. Then come here.
     python agent.py          runs both example paths below
 """
 
+# from mcp_client import call_tool
+
+# # was: results = search_listings(parsed["description"], parsed["size"], parsed["max_price"])
+# results = call_tool("search_listings", {
+#     "description": parsed["description"],
+#     "size": parsed["size"],
+#     "max_price": parsed["max_price"],
+# })
+
+# session["parsed"] = parsed
+# trace.step("parse_query", inputs=query, returned=str(parsed))
+
+# session["search_results"] = results
+# trace.step("search_listings (via MCP)", inputs=str(parsed), returned=results, note=f"{len(results)} match(es)")
+
+# if not results:
+#     session["error"] = _nothing_found_message(parsed)
+#     trace.step("branch", note="search returned []: stopping before suggest_outfit")
+#     return session
+
+# session["selected_item"] = results[0]
+# trace.step("select_item", returned=session["selected_item"])
+
+# # after suggest_outfit(...)
+# trace.step("suggest_outfit", inputs=session["selected_item"],
+#            returned=session["outfit_suggestion"])
+
+# # after create_fit_card(...)
+# trace.step("create_fit_card", inputs=session["selected_item"],
+#            returned=session["fit_card"])
+
 import re
 
 import config
 import trace
-from tools import search_listings, suggest_outfit, create_fit_card
+from mcp_client import call_tool
+from tools import suggest_outfit, create_fit_card
 from generate import ModelUnavailable
 
 
@@ -101,11 +133,11 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     }
 
     trace.check_iterations(1)
-    session["search_results"] = search_listings(
-        session["parsed"]["description"],
-        size=session["parsed"]["size"],
-        max_price=session["parsed"]["max_price"],
-    )
+    session["search_results"] = call_tool("search_listings", {
+        "description": session["parsed"]["description"],
+        "size": session["parsed"]["size"],
+        "max_price": session["parsed"]["max_price"],
+    })
     if not session["search_results"]:
         session["error"] = (
             "No listings matched those filters. Try a different description, "

@@ -135,7 +135,8 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         trace.step(
             "suggest_outfit",
             inputs=(
-                f"new_item={session['selected_item'].get('title')!r}, "
+                f"new_item_id={session['selected_item'].get('id')!r}, "
+                f"new_item_title={session['selected_item'].get('title')!r}, "
                 f"wardrobe_items={len(session['wardrobe'].get('items') or [])}"
             ),
             returned=session["error"],
@@ -144,7 +145,8 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     trace.step(
         "suggest_outfit",
         inputs=(
-            f"new_item={session['selected_item'].get('title')!r}, "
+            f"new_item_id={session['selected_item'].get('id')!r}, "
+            f"new_item_title={session['selected_item'].get('title')!r}, "
             f"wardrobe_items={len(session['wardrobe'].get('items') or [])}"
         ),
         returned=session["outfit_suggestion"],

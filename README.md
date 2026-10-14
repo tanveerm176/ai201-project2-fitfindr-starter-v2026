@@ -239,17 +239,69 @@ returns an actionable session error and exits normally.
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 | --------- | ------ | ----- | ----- | ----- | ----- | ----- | ------- |
-| 1.        |        |       |       |       |       |       |         |
-| 2.        |        |       |       |       |       |       |         |
-| 3.        |        |       |       |       |       |       |         |
-| 4.        |        |       |       |       |       |       |         |
-| 5.        |        |       |       |       |       |       |         |
+| 1. Matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops before tool 2 | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected item ID reaches `suggest_outfit` | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card includes title, price, platform, 2-4 sentences | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Search results respect the $30 ceiling | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Real output from one try**, pasted as text, naming the file and function
-that produced it:
+**Real output from one try per criterion**, from
+[`results/run_2026-10-13_2250_before.md`](./results/run_2026-10-13_2250_before.md).
+Evaluator output was produced by `run_eval.py::run_once` calling
+`agent.py::run_agent`; the price-filter output was produced by
+`mcp_client.call_tool` -> `mcp_server.py::search_listings` ->
+`tools.search_listings`.
+
+**Criterion 1 — `agent.py::run_agent`**
 
 ```
+- stopped early: no
+- selected_item: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+- search_results: 10
+Fit card:
+Channel your inner early 2000s icon with this sweet-meets-grunge Y2K Baby Tee — Butterfly Print, featuring a fitted crop length and pink, purple, and white graphic. Pair the pink-and-purple butterfly graphic with baggy jeans or utilitarian trousers for the ultimate nostalgic silhouette. Snag this excellent-condition vintage top for just $18.0 on depop before it's gone!
+```
 
+**Criterion 2 — `agent.py::run_agent` empty-search branch**
+
+```
+- stopped early: yes — No listings matched those filters. Try a different description, size, or higher price limit.
+- selected_item: (none)
+- search_results: 0
+[1] search_listings (via MCP)
+      in:  description='unobtainium ceremonial jumpsuit', size='ZZQX', max_price=0.01
+      out: [] (empty)
+```
+
+**Criterion 3 — `agent.py::run_agent` trace inputs**
+
+```
+- selected_item: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[2] suggest_outfit
+      in:  new_item_id='lst_002', new_item_title='Y2K Baby Tee — Butterfly Print', wardrobe_items=10
+```
+
+The selected item's ID and the `suggest_outfit` input ID were `lst_002` in
+each of the five recorded tries.
+
+**Criterion 4 — `tools.create_fit_card`, try 1**
+
+```
+Lean into effortless 2000s style with the Y2K Baby Tee — Butterfly Print, featuring a sweet graphic and fitted crop length. Layer the pink and purple tones under a zip hoodie or pair it with baggy denim for that ultimate nostalgic silhouette. Grab this cute vintage find for just $18.0 today on depop!
+```
+
+The five actual cards are in the linked run report under “fit card includes
+item facts”; each contains the exact title, `$18.0`, `depop`, and 2-4
+sentences.
+
+**Criterion 5 — five calls to `tools.search_listings` via MCP**
+
+```
+Try 1: count=10, prices=[18.0, 24.0, 19.0, 26.0, 15.0, 22.0, 27.0, 20.0, 30.0, 12.0], within_limit=True
+Try 2: count=10, prices=[18.0, 24.0, 19.0, 26.0, 15.0, 22.0, 27.0, 20.0, 30.0, 12.0], within_limit=True
+Try 3: count=10, prices=[18.0, 24.0, 19.0, 26.0, 15.0, 22.0, 27.0, 20.0, 30.0, 12.0], within_limit=True
+Try 4: count=10, prices=[18.0, 24.0, 19.0, 26.0, 15.0, 22.0, 27.0, 20.0, 30.0, 12.0], within_limit=True
+Try 5: count=10, prices=[18.0, 24.0, 19.0, 26.0, 15.0, 22.0, 27.0, 20.0, 30.0, 12.0], within_limit=True
 ```
 
 ---
